@@ -212,7 +212,98 @@ SELECT count(t_name) count_t from teacher a WHERE a.t_name like '李%';
 
 #### 7、查询学过"张"老师授课的同学的信息 
 
+```mysql
+SELECT
+s.*,t.t_name '任课老师'
+FROM 
+course c,score a, student s,teacher t
+WHERE
+		t.t_id = c.t_id
+and c.c_id = a.c_id
+and a.s_id = s.s_id
+and t.t_name='张老师'
 ```
 
+
+
+#### 8、查询没学过"张"老师授课的同学的信息 
+
+```mysql
+-- 8、查询没学过"张"老师授课的同学的信息 
+-- 这样是不行的？ 直接取反
+SELECT
+s.*,t.t_name '任课老师'
+FROM 
+course c,score a, student s,teacher t
+WHERE
+		t.t_id = c.t_id
+and c.c_id = a.c_id
+and a.s_id = s.s_id
+and t.t_name!='张老师'
+
+-- 1.把第七道题的结果当成条件
+SELECT * from student WHERE s_id not in(
+SELECT
+a.s_id
+FROM 
+course c,score a,teacher t
+WHERE
+		t.t_id = c.t_id
+and c.c_id = a.c_id
+and t.t_name='张老师');
+
+-- not exists  感觉这种方式看着复杂了一些
+SELECT * from student WHERE not EXISTS(
+SELECT 1 from 
+	(SELECT
+	a.s_id
+	FROM 
+	course c,score a,teacher t
+	WHERE
+			t.t_id = c.t_id
+	and c.c_id = a.c_id
+	and t.t_name='张老师') tabl
+WHERE tabl.s_id = student.s_id);
+```
+
+
+
+#### 9、查询学过编号为"01"并且也学过编号为"02"的课程的同学的信息
+
+```mysql
+-- 9、查询学过编号为"01"并且也学过编号为"02"的课程的同学的信息
+course 01和02  student score
+
+1.自连接的方式
+SELECT
+ c.*
+FROM
+	score a,score b,student c
+WHERE
+	a.c_id = '01'
+and b.c_id='02'
+and a.s_id = b.s_id -- 三张表的连接条件
+and a.s_id = c.s_id
+
+2.长型数据变成宽型数据
+```
+
+#### 10、查询学过编号为"01"但是没有学过编号为"02"的课程的同学的信息
+
+```mysql
+-- 10、查询学过编号为"01"但是没有学过编号为"02"的课程的同学的信息
+SELECT s.* from 
+(SELECT
+	a.s_id,
+	max(case WHEN c_id ='01' THEN s_score END) s01, -- 01课程的成绩
+	max(case WHEN c_id ='02' THEN s_score END) s02 
+FROM
+ score a
+GROUP BY
+	a.s_id) t,student s -- 这里把第二个查询看做一个子表
+WHERE 
+	t.s_id =s.s_id	-- 连接条件
+	and t.s01 is not null	-- 这里的不为空·是这样写的。 null值不能用大于小于比较
+	and	t.s02 is null
 ```
 
