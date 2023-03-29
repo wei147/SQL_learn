@@ -307,3 +307,150 @@ WHERE
 	and	t.s02 is null
 ```
 
+
+
+#### 11、查询没有学全所有课程的同学的信息 
+
+```mysql
+
+-- 11、查询没有学全所有课程的同学的信息 
+-- course score(同学所学课程是这张表) 同学信息表 student
+-- 先把同学们所学课程拿到
+SELECT
+ c.*,a.c_name,b.s_score, count(b.c_id)
+from 
+course a,score b, student c
+WHERE 
+		a.c_id = b.c_id
+and b.s_id = c.s_id
+
+
+SELECT
+	a.*,count(b.c_id) cnt
+from 
+	student a
+LEFT JOIN 
+		score b
+on a.s_id=b.s_id
+GROUP BY a.s_id
+HAVING  -- having是分组之后的条件
+		count(b.c_id)< (SELECT count(course.c_id) from course) -- 统计所有课程的个数
+
+```
+
+
+
+#### 12、查询至少有一门课与学号为"01"的同学所学相同的同学的信息 
+
+```mysql
+
+-- 12、查询至少有一门课与学号为"01"的同学所学相同的同学的信息 
+SELECT 
+	DISTINCT a.* -- 关键字去重
+from 
+	student a
+LEFT JOIN 
+	score b
+on a.s_id = b.s_id -- 两表连接条件
+WHERE b.c_id in -- 如果有c_id和学号01选课
+	(SELECT c_id FROM score a WHERE s_id='01')
+
+-- 通过分组去重
+SELECT 
+	a.* 
+from 
+	student a
+LEFT JOIN 
+	score b
+on a.s_id = b.s_id -- 两表连接条件
+WHERE b.c_id in -- 如果有c_id和学号01选课
+	(SELECT c_id FROM score a WHERE s_id='01')
+GROUP BY 1,2,3,4 -- 在mysql中可以通过第1,第2,第3,第4 代表这四个字段
+```
+
+
+
+#### 13、查询和"01"号的同学学习的课程完全相同的其他同学的信息 
+
+```mysql
+-- 13、查询和"01"号的同学学习的课程完全相同的其他同学的信息 
+-- 构建一张临时表 t 。都和01所学同样课程
+CREATE table s01_s_temp as -- 根据查询的数据和创建表
+SELECT 
+	t.*,b.c_id cid2
+FROM
+	(SELECT
+		a.*,b.c_id
+		from 
+			student a,
+			(SELECT c_id FROM score a WHERE s_id='01') b) t
+LEFT JOIN
+	score b
+on  t.s_id = b.s_id
+and t.c_id = b.c_id
+
+UNION  -- mysql中没有full join 所以要用这种方式写
+
+SELECT 
+	t.*,b.c_id cid2
+FROM
+	(SELECT
+		a.*,b.c_id
+		from 
+			student a,
+			(SELECT c_id FROM score a WHERE s_id='01') b) t
+RIGHT JOIN
+	score b
+on  t.s_id = b.s_id
+and t.c_id = b.c_id
+
+SELECT * from student WHERE s_id not in
+	(SELECT s_id from s01_s_temp WHERE c_id is null or cid2 is null)
+	and s_id != '01'
+```
+
+
+
+#### -- 14、查询没学过"张三"老师讲授的任一门课程的学生姓名 
+
+```mysql
+
+-- 14、查询没学过"张三"老师讲授的任一门课程的学生姓名 
+
+```
+
+#### 15、查询两门及其以上不及格课程的同学的学号，姓名及其平均成绩 
+
+```mysql
+-- 15、查询两门及其以上不及格课程的同学的学号，姓名及其平均成绩 
+student  score
+
+1.自己写的 (欠缺两个门棵以上这个条件)
+SELECT 
+	b.*,avg(a.s_score) 平均成绩
+from
+	score a, student b
+WHERE
+		a.s_score <60
+and a.s_id = b.s_id
+GROUP BY a.s_id
+
+2.左连接
+SELECT 
+	 b.*,avg(a.s_score) 平均成绩
+from
+	 student b
+LEFT JOIN
+	 score a
+on a.s_id = b.s_id
+GROUP BY 
+		a.s_id
+HAVING
+	-- 把分数大于等于 60分的排除掉。如果不及格的个数大于等于2则查询出来
+	sum(case when a.s_score >= 60 then 0 else 1 end) >=2
+```
+
+
+
+#### 16、检索"01"课程分数小于60，按分数降序排列的学生信息
+
